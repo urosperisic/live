@@ -1,0 +1,75 @@
+git init
+
+uv venv
+source .venv/bin/activate
+
+uv pip install django djangorestframework django-cors-headers \
+    django-axes django-redis redis channels channels-redis \
+    python-decouple python-json-logger psycopg2-binary \
+    "uvicorn[standard]" ruff httpie
+
+npm install -g wscat
+npm list -g --depth=0
+
+ruff format .
+ruff check . --fix
+
+uv pip freeze > requirements.txt
+uv pip install -r requirements.txt
+
+redis-cli ping
+redis-cli MONITOR
+redis-cli -n 1 KEYS "*"
+redis-cli -n 1 FLUSHDB # clear keys
+redis-cli shutdown
+redis-cli
+keys *
+FLUSHALL
+FLUSHDB
+MONITOR
+
+psql postgres -c "CREATE USER chatapp WITH PASSWORD 'yourpassword';"
+psql postgres -c "CREATE DATABASE chatapp OWNER chatapp;"
+
+psql -U postgres
+CREATE DATABASE chatapp;
+CREATE USER chatapp WITH PASSWORD 'yourpassword';
+GRANT ALL PRIVILEGES ON DATABASE chatapp TO chatapp;
+ALTER DATABASE chatapp OWNER TO chatapp;
+\q
+
+python -c "import secrets; print(secrets.token_urlsafe(50))"
+
+python manage.py makemigrations accounts
+
+python manage.py makemigrations chat
+
+python manage.py migrate
+
+python manage.py createsuperuser
+
+python manage.py runserver
+
+python -m uvicorn config.asgi:application --reload --port 8000
+
+django-admin startproject config .
+
+python manage.py clearsessions    # delete expired sessions from DB
+
+# CORS_ALLOWED_ORIGINS=http://localhost:3000
+# CSRF_TRUSTED_ORIGINS=http://localhost:3000
+
+# CORS_ALLOWED_ORIGINS=http://yourdomain.com
+# CSRF_TRUSTED_ORIGINS=http://yourdomain.com
+
+AXES_ACCESS_FAILURE_LOG_PER_USER_LIMIT = 1000
+python manage.py axes_reset
+
+==========
+==========
+
+winget install OpenJS.NodeJS
+
+npm create vite@latest frontend -- --template react
+cd frontend
+npm install
