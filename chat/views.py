@@ -3,10 +3,10 @@
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
-from django.contrib.auth import get_user_model
-from core.responses import success, created, no_content
-from core.exceptions import NotFoundError
+from core.responses import success, created
+from core.exceptions import ValidationError
 from accounts.permissions import IsAdmin
+from accounts.selectors import get_user_by_username
 from .serializers import RoomSerializer, RoomCreateSerializer, MessageSerializer
 from .selectors import (
     get_public_rooms,
@@ -15,8 +15,6 @@ from .selectors import (
     get_recent_messages,
 )
 from .services import create_room, join_room, leave_room
-
-User = get_user_model()
 
 
 class RoomListCreateView(APIView):
@@ -58,13 +56,8 @@ class RoomInviteView(APIView):
         room = get_room_for_user(slug, request.user)
         username = request.data.get("username", "").strip()
         if not username:
-            from core.exceptions import ValidationError
-
             raise ValidationError("Username is required.")
-        try:
-            user = User.objects.get(username=username, is_active=True)
-        except User.DoesNotExist:
-            raise NotFoundError(f'User "{username}" not found.')
+        user = get_user_by_username(username)
         join_room(room, user)
         return success({"detail": f"{username} added to {room.name}."})
 
