@@ -75,6 +75,7 @@ SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", default=False, cast=bool
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_PATH = "/"
 SESSION_SAVE_EVERY_REQUEST = False
+SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
 # ── Cache (Redis) ─────────────────────────────────────────
 CACHES = {
