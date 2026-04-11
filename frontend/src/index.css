@@ -204,8 +204,7 @@ p  { font-size: 1.4rem; color: var(--text-muted); }
 
 .message--first {
   margin-top: 1.6rem;
-  background: var(--bg-2);
-  border-left: 1px solid var(--accent-light);
+  border-top: 1px solid var(--border);
   padding-left: 0.8rem;
 }
 
