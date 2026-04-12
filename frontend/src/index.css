@@ -234,6 +234,17 @@ p  { font-size: 1.4rem; color: var(--text-muted); }
   white-space: pre-wrap;
 }
 
+.code-block {
+  background: var(--bg-2);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  font-family: monospace;
+  font-size: 1.3rem;
+  margin-top: 0.4rem;
+  white-space: pre;
+}
+
 /* ── Message Input ────────────────────────────────────── */
 .chat__input-area {
   padding: 1.2rem 2rem;
