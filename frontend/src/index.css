@@ -106,7 +106,7 @@ p  { font-size: 1.4rem; color: var(--text-muted); }
 }
 
 .sidebar__footer {
-  padding: 1.2rem 1.6rem;
+  padding: 1.9rem 1.6rem;
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -571,6 +571,10 @@ p  { font-size: 1.4rem; color: var(--text-muted); }
   }
 
   .sidebar-overlay--visible { display: block; }
+
+  .sidebar__footer {
+  padding: 1.5rem 1.6rem;
+}
 
   .chat__header     { padding: 0 1.2rem; }
   .chat__messages   { padding: 1.2rem; }

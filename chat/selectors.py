@@ -1,8 +1,13 @@
 # chat/selectors.py
 
 from django.conf import settings
+from django.db.models import Count
 from .models import Room, Message
 from .exceptions import RoomNotFound, RoomAccessDenied
+
+
+def _annotate_rooms(qs):
+    return qs.annotate(member_count=Count("members", distinct=True))
 
 
 def get_room_by_slug(slug: str) -> Room:
@@ -20,19 +25,21 @@ def get_room_for_user(slug: str, user) -> Room:
 
 
 def get_public_rooms():
-    return Room.objects.filter(is_private=False).prefetch_related("members")
+    return _annotate_rooms(Room.objects.filter(is_private=False))
 
 
 def get_user_rooms(user):
-    return Room.objects.filter(members=user).prefetch_related("members")
+    return _annotate_rooms(Room.objects.filter(members=user))
 
 
 def get_recent_messages(room: Room, limit: int = None):
     limit = limit or settings.MESSAGE_HISTORY_LIMIT
-    # Return oldest-first slice of the most recent N messages
-    qs = (
-        Message.objects.filter(room=room)
-        .select_related("sender")
-        .order_by("-created_at")[:limit]
+    return list(
+        reversed(
+            list(
+                Message.objects.filter(room=room)
+                .select_related("sender")
+                .order_by("-created_at")[:limit]
+            )
+        )
     )
-    return reversed(list(qs))

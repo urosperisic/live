@@ -9,7 +9,7 @@ from .exceptions import RoomAlreadyExists
 
 @transaction.atomic
 def create_room(user, name: str, is_private: bool = False) -> Room:
-    slug = f"{slugify(name)}-{uuid.uuid4().hex[:6]}"
+    slug = f"{slugify(name)[:100]}-{uuid.uuid4().hex[:6]}"
     try:
         room = Room.objects.create(
             name=name, slug=slug, is_private=is_private, created_by=user

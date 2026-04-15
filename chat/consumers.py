@@ -185,9 +185,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
     async def _check_rate_limit(self) -> bool:
-        key = f"ws_rate:{self.user.id}"
-        count = cache.get(key, 0)
-        if count >= _WS_RATE_LIMIT:
-            return False
-        cache.set(key, count + 1, timeout=_WS_RATE_WINDOW)
-        return True
+        key = f"ws_rate:{self.user.id}:{self.room_slug}"
+        try:
+            count = cache.incr(key)
+            if count == 1:
+                cache.expire(key, _WS_RATE_WINDOW)
+        except Exception:
+            return True  # Redis down — allow through
+        return count <= _WS_RATE_LIMIT

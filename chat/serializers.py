@@ -9,7 +9,7 @@ User = get_user_model()
 
 class RoomSerializer(serializers.ModelSerializer):
     created_by = serializers.ReadOnlyField(source="created_by.username")
-    member_count = serializers.SerializerMethodField()
+    member_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Room
@@ -23,9 +23,6 @@ class RoomSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "slug", "created_by", "member_count", "created_at"]
-
-    def get_member_count(self, obj):
-        return obj.members.count()
 
 
 class RoomCreateSerializer(serializers.Serializer):
