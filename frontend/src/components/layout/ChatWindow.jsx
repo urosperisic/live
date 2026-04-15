@@ -14,6 +14,34 @@ function ConnectionStatus({ status }) {
   )
 }
 
+function OnlineUsers({ slug }) {
+  const online  = useChatStore(s => s.online[slug] ?? null)
+  const [hover, setHover] = useState(false)
+
+  if (!online || !online.length) return null
+
+  return (
+    <div
+      className="online-indicator"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <span className="online-indicator__dot" />
+      <span className="online-indicator__count">{online.length} online</span>
+
+      {hover && (
+        <div className="online-popup" role="tooltip">
+          <div className="online-popup__list">
+            {[...online].sort().map(u => (
+              <div key={u} className="online-popup__user">{u}</div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function InviteModal({ slug, onClose }) {
   const [username, setUsername] = useState('')
   const [loading, setLoading]   = useState(false)
@@ -93,10 +121,18 @@ export default function ChatWindow({ onMenuClick, status, sendMessage }) {
     )
   }
 
-  const grouped = msgs.map((msg, i) => ({
-    ...msg,
-    isFirst: i === 0 || msgs[i - 1].sender !== msg.sender,
-  }))
+  const grouped = msgs.map((msg, i) => {
+    const msgDate  = new Date(msg.created_at).toDateString()
+    const prevDate = i > 0 ? new Date(msgs[i - 1].created_at).toDateString() : null
+    return {
+      ...msg,
+      isFirst:   i === 0 || msgs[i - 1].sender !== msg.sender || msgDate !== prevDate,
+      showDate:  msgDate !== prevDate,
+      dateLabel: msgDate === new Date().toDateString()
+        ? 'Today'
+        : new Date(msg.created_at).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }),
+    }
+  })
 
   return (
     <main className="chat">
@@ -115,6 +151,7 @@ export default function ChatWindow({ onMenuClick, status, sendMessage }) {
             +
           </button>
         )}
+        <OnlineUsers slug={activeSlug} />
         <ConnectionStatus status={status} />
       </div>
 
@@ -125,7 +162,14 @@ export default function ChatWindow({ onMenuClick, status, sendMessage }) {
           </div>
         )}
         {grouped.map(msg => (
-          <MessageBubble key={msg.id} message={msg} isFirst={msg.isFirst} />
+          <div key={msg.id}>
+            {msg.showDate && (
+              <div className="date-separator">
+                <span>{msg.dateLabel}</span>
+              </div>
+            )}
+            <MessageBubble message={msg} isFirst={msg.isFirst} />
+          </div>
         ))}
         <div ref={bottomRef} />
       </div>

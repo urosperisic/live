@@ -11,7 +11,7 @@ export default function useChat(slug) {
   const activeToken    = useRef(null)   // unique token per connection lifecycle
 
   const [status, setStatus] = useState('disconnected')
-  const { setHistory, addMessage } = useChatStore()
+  const { setHistory, addMessage, setOnline } = useChatStore()
 
   const sendMessage = useCallback((content) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -29,7 +29,7 @@ export default function useChat(slug) {
     // Close any existing connection first
     clearTimeout(reconnectTimer.current)
     if (wsRef.current) {
-      wsRef.current.onclose = null  // prevent reconnect from old socket
+      wsRef.current.onclose = null
       wsRef.current.close()
       wsRef.current = null
     }
@@ -68,6 +68,11 @@ export default function useChat(slug) {
               content:    data.content,
               created_at: data.created_at,
             })
+            break
+          case 'presence':
+          case 'user_join':
+          case 'user_leave':
+            setOnline(slug, data.online)
             break
           case 'error':
             console.warn('[ws] error:', data.detail)

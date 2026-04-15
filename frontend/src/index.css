@@ -537,6 +537,74 @@ p  { font-size: 1.4rem; color: var(--text-muted); }
   margin: 0.4rem 0;
 }
 
+/* ── Online Users ─────────────────────────────────────── */
+.online-indicator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: default;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+}
+
+.online-indicator__dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.online-indicator__count {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+}
+
+.online-popup {
+  position: absolute;
+  top: calc(100% + 0.8rem);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.8rem;
+  min-width: 14rem;
+  max-height: 24rem;
+  overflow-y: auto;
+  z-index: 50;
+}
+
+.online-popup__user {
+  font-size: 1.3rem;
+  padding: 0.4rem 0.8rem;
+  color: var(--text);
+  border-radius: 0.4rem;
+}
+
+.online-popup__user:hover {
+  background: var(--bg-3);
+}
+
+/* ── Date Separator ───────────────────────────────────── */
+.date-separator {
+  max-width: 800px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 2rem 0 1rem;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+}
+
+.date-separator::before,
+.date-separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 /* ── Responsive ───────────────────────────────────────── */
 .sidebar-toggle {
   display: none;

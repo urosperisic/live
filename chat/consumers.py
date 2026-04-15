@@ -13,6 +13,10 @@ _WS_RATE_LIMIT = 10  # max messages per window
 _WS_RATE_WINDOW = 10  # seconds
 
 
+def _presence_key(room_slug: str) -> str:
+    return f"online:{room_slug}"
+
+
 class ChatConsumer(AsyncWebsocketConsumer):
     """
     WebSocket consumer for a single chat room.
@@ -50,22 +54,36 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
+        # Add to presence set
+        cache.sadd(_presence_key(self.room_slug), self.user.username)
+
         # Send recent message history to this client only
         await self._send_history()
 
+        # Send current online list to this client only
+        await self._send_presence()
+
         # Notify room of new online user
+        online = cache.smembers(_presence_key(self.room_slug)) or set()
         await self.channel_layer.group_send(
             self.group_name,
-            {"type": "user.join", "username": user.username},
+            {"type": "user.join", "username": user.username, "online": list(online)},
         )
 
     async def disconnect(self, code):
         if not hasattr(self, "group_name"):
             return
+        # Remove from presence set
+        cache.srem(_presence_key(self.room_slug), self.user.username)
+        online = cache.smembers(_presence_key(self.room_slug)) or set()
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
         await self.channel_layer.group_send(
             self.group_name,
-            {"type": "user.leave", "username": self.user.username},
+            {
+                "type": "user.leave",
+                "username": self.user.username,
+                "online": list(online),
+            },
         )
 
     async def receive(self, text_data):
@@ -125,6 +143,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "user_join",
                     "username": event["username"],
+                    "online": event["online"],
                 }
             )
         )
@@ -135,6 +154,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "user_leave",
                     "username": event["username"],
+                    "online": event["online"],
                 }
             )
         )
@@ -170,6 +190,17 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 {
                     "type": "history",
                     "messages": list(history),
+                }
+            )
+        )
+
+    async def _send_presence(self):
+        online = cache.smembers(_presence_key(self.room_slug)) or set()
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "presence",
+                    "online": list(online),
                 }
             )
         )

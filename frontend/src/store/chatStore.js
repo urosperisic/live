@@ -5,6 +5,7 @@ const useChatStore = create((set, get) => ({
   rooms:       [],
   activeSlug:  null,
   messages:    {},   // { [slug]: Message[] }
+  online:      {},   // { [slug]: string[] }
   loading:     false,
   error:       null,
 
@@ -53,6 +54,10 @@ const useChatStore = create((set, get) => ({
         [slug]: [...(s.messages[slug] || []), message],
       },
     })),
+
+  // ── Presence ──────────────────────────────────────────
+  setOnline: (slug, users) =>
+    set(s => ({ online: { ...s.online, [slug]: users } })),
 
   clearError: () => set({ error: null }),
 }))
