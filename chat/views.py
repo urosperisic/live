@@ -12,7 +12,7 @@ from .selectors import (
     get_public_rooms,
     get_user_rooms,
     get_room_for_user,
-    get_recent_messages,
+    get_messages_before,
 )
 from .services import create_room, join_room, leave_room
 
@@ -80,19 +80,44 @@ class RoomLeaveView(APIView):
         return success({"detail": f"Left room {room.name}."})
 
 
+# class MessageHistoryView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request, slug):
+#         room = get_room_for_user(slug, request.user)
+#         messages = get_recent_messages(room)
+#         paginator = PageNumberPagination()
+#         page = paginator.paginate_queryset(list(messages), request)
+#         return success(
+#             data=MessageSerializer(page, many=True).data,
+#             meta={
+#                 "count": paginator.page.paginator.count,
+#                 "next": paginator.get_next_link(),
+#                 "previous": paginator.get_previous_link(),
+#             },
+#         )
+
+
 class MessageHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, slug):
         room = get_room_for_user(slug, request.user)
-        messages = get_recent_messages(room)
-        paginator = PageNumberPagination()
-        page = paginator.paginate_queryset(list(messages), request)
+        limit = min(int(request.query_params.get("limit", 20)), 50)  # max 50
+        before = request.query_params.get("before")  # message id
+
+        try:
+            before_id = int(before) if before else None
+        except ValueError:
+            before_id = None
+
+        messages = get_messages_before(room, before_id=before_id, limit=limit)
+        has_more = len(messages) == limit  # if fewer than limit returned, no more pages
+
         return success(
-            data=MessageSerializer(page, many=True).data,
+            data=MessageSerializer(messages, many=True).data,
             meta={
-                "count": paginator.page.paginator.count,
-                "next": paginator.get_next_link(),
-                "previous": paginator.get_previous_link(),
+                "has_more": has_more,
+                "oldest_id": messages[0].id if messages else None,
             },
         )

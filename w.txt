@@ -17,6 +17,8 @@ ruff check . --fix
 uv pip freeze > requirements.txt
 uv pip install -r requirements.txt
 
+---
+
 redis-cli ping
 redis-cli MONITOR
 redis-cli -n 1 KEYS "*"
@@ -27,6 +29,35 @@ keys *
 FLUSHALL
 FLUSHDB
 MONITOR
+
+Built into AsyncWebsocketConsumer:
+
+self.scope — Python memory
+self.channel_name — Python memory
+self.accept() — WebSocket protocol
+self.close() — WebSocket protocol
+self.send() — WebSocket protocol
+self.channel_layer.group_add() — Redis (channel layer)
+self.channel_layer.group_discard() — Redis (channel layer)
+self.channel_layer.group_send() — Redis (channel layer)
+
+Our custom methods:
+
+_get_room() — Postgres
+_save_message() — Postgres
+_get_history() — Postgres
+_send_history() — WebSocket protocol
+_send_presence() — WebSocket protocol
+_send_error() — WebSocket protocol
+_check_rate_limit() — Redis (direct client)
+
+Presence (inline in connect/disconnect):
+
+self.redis.sadd() in connect — Redis (direct client)
+self.redis.srem() in disconnect — Redis (direct client)
+self.redis.smembers() in connect, disconnect, _send_presence — Redis (direct client)
+
+---
 
 psql postgres -c "CREATE USER chatapp WITH PASSWORD 'yourpassword';"
 psql postgres -c "CREATE DATABASE chatapp OWNER chatapp;"

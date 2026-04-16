@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { fetchRooms, createRoom, joinRoom, leaveRoom } from '../api/chat'
+import { fetchRooms, createRoom, joinRoom, leaveRoom, fetchMessages } from '../api/chat' // CHANGED: + fetchMessages
 
 const useChatStore = create((set, get) => ({
   rooms:       [],
@@ -8,6 +8,9 @@ const useChatStore = create((set, get) => ({
   online:      {},   // { [slug]: string[] }
   loading:     false,
   error:       null,
+  hasMore:     {},
+  loadingMore: {},
+  oldestId:    {},
 
   // ── Rooms ─────────────────────────────────────────────
   loadRooms: async () => {
@@ -42,11 +45,15 @@ const useChatStore = create((set, get) => ({
   setActiveRoom: (slug) => set({ activeSlug: slug }),
 
   // ── Messages ──────────────────────────────────────────
-  // Called by useChat hook when history arrives over WebSocket
-  setHistory: (slug, messages) =>
-    set(s => ({ messages: { ...s.messages, [slug]: messages } })),
+  // CHANGED: accepts meta, stores has_more + oldest_id ↓
+  setHistory: (slug, messages, meta = {}) =>
+    set(s => ({
+      messages:    { ...s.messages,    [slug]: messages },
+      hasMore:     { ...s.hasMore,     [slug]: meta.has_more  ?? false },
+      oldestId:    { ...s.oldestId,    [slug]: meta.oldest_id ?? null  },
+      loadingMore: { ...s.loadingMore, [slug]: false },
+    })),
 
-  // Called by useChat hook on each incoming message
   addMessage: (slug, message) =>
     set(s => ({
       messages: {
@@ -54,6 +61,33 @@ const useChatStore = create((set, get) => ({
         [slug]: [...(s.messages[slug] || []), message],
       },
     })),
+
+  // CHANGED: new action ↓
+  loadMoreMessages: async (slug) => {
+      const { oldestId, loadingMore, hasMore } = get()
+      if (loadingMore[slug] || !hasMore[slug]) return
+
+      const el = document.querySelector('.chat__messages')
+      const prevHeight = el?.scrollHeight ?? 0
+
+      set(s => ({ loadingMore: { ...s.loadingMore, [slug]: true } }))
+
+      try {
+        const { data, meta } = await fetchMessages(slug, { before: oldestId[slug] })
+        set(s => ({
+          messages:    { ...s.messages,    [slug]: [...data, ...(s.messages[slug] || [])] },
+          hasMore:     { ...s.hasMore,     [slug]: meta.has_more  ?? false },
+          oldestId:    { ...s.oldestId,    [slug]: meta.oldest_id ?? null  },
+          loadingMore: { ...s.loadingMore, [slug]: false },
+        }))
+        // CHANGED: moved after set() so React has rendered new messages ↓
+        requestAnimationFrame(() => {
+          if (el) el.scrollTop = el.scrollHeight - prevHeight
+        })
+      } catch {
+        set(s => ({ loadingMore: { ...s.loadingMore, [slug]: false } }))
+      }
+    },
 
   // ── Presence ──────────────────────────────────────────
   setOnline: (slug, users) =>

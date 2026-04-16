@@ -35,7 +35,7 @@ body {
   --text-muted:      #888;
   --accent:          #1a6fd4;
   --accent-hover:    #155db8;
-  --accent-light:    #90b8f8;   /* used for sender names, links — passes contrast on dark bg */
+  --accent-light:    #90b8f8;
   --avatar-bg:       #2a3f5f;
   --avatar-border:   #3d5a8a;
   --danger:          #e05252;
@@ -106,7 +106,7 @@ p  { font-size: 1.4rem; color: var(--text-muted); }
 }
 
 .sidebar__footer {
-  padding: 1.9rem 1.6rem;
+  padding: 1.8rem 1.6rem;
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -183,6 +183,7 @@ p  { font-size: 1.4rem; color: var(--text-muted); }
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  overflow-anchor: none;
 }
 
 .chat__empty,
@@ -206,6 +207,12 @@ p  { font-size: 1.4rem; color: var(--text-muted); }
   margin-top: 1.6rem;
   border-top: 1px solid var(--border);
   padding-left: 0.8rem;
+  animation: fadeIn 700ms ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .message__header {
@@ -641,8 +648,8 @@ p  { font-size: 1.4rem; color: var(--text-muted); }
   .sidebar-overlay--visible { display: block; }
 
   .sidebar__footer {
-  padding: 1.5rem 1.6rem;
-}
+    padding: 1.4rem 1.6rem;
+  }
 
   .chat__header     { padding: 0 1.2rem; }
   .chat__messages   { padding: 1.2rem; }

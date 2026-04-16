@@ -4,8 +4,7 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
-from django.core.cache import cache
-from django.conf import settings
+from django_redis import get_redis_connection
 from .models import Room, Message
 from .services import save_message
 
@@ -17,20 +16,15 @@ def _presence_key(room_slug: str) -> str:
     return f"online:{room_slug}"
 
 
+def _decode_online(members: set) -> list:
+    """smembers returns bytes — decode to str for JSON serialization."""  # CHANGED
+    return [u.decode() if isinstance(u, bytes) else u for u in members]  # CHANGED
+
+
 class ChatConsumer(AsyncWebsocketConsumer):
-    """
-    WebSocket consumer for a single chat room.
-
-    URL: /ws/chat/<room_slug>/
-
-    Lifecycle:
-      connect    → authenticate → join channel group → send message history
-      receive    → save to DB → broadcast to group
-      disconnect → leave channel group
-
-    Groups:
-      room_{slug} — all connected clients in the same room share this group.
-    """
+    @property
+    def redis(self):
+        return get_redis_connection("default")
 
     async def connect(self):
         user = self.scope.get("user")
@@ -54,8 +48,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
 
-        # Add to presence set
-        cache.sadd(_presence_key(self.room_slug), self.user.username)
+        self.redis.sadd(_presence_key(self.room_slug), self.user.username)
 
         # Send recent message history to this client only
         await self._send_history()
@@ -63,26 +56,32 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Send current online list to this client only
         await self._send_presence()
 
-        # Notify room of new online user
-        online = cache.smembers(_presence_key(self.room_slug)) or set()
+        online = _decode_online(
+            self.redis.smembers(_presence_key(self.room_slug)) or set()
+        )  # CHANGED
         await self.channel_layer.group_send(
             self.group_name,
-            {"type": "user.join", "username": user.username, "online": list(online)},
+            {
+                "type": "user.join",
+                "username": user.username,
+                "online": online,
+            },  # CHANGED
         )
 
     async def disconnect(self, code):
         if not hasattr(self, "group_name"):
             return
-        # Remove from presence set
-        cache.srem(_presence_key(self.room_slug), self.user.username)
-        online = cache.smembers(_presence_key(self.room_slug)) or set()
+        self.redis.srem(_presence_key(self.room_slug), self.user.username)
+        online = _decode_online(
+            self.redis.smembers(_presence_key(self.room_slug)) or set()
+        )  # CHANGED
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
         await self.channel_layer.group_send(
             self.group_name,
             {
                 "type": "user.leave",
                 "username": self.user.username,
-                "online": list(online),
+                "online": online,  # CHANGED
             },
         )
 
@@ -175,32 +174,40 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def _save_message(self, content: str) -> Message:
         return save_message(self.room, self.user, content)
 
+    # CHANGED: uses get_messages_before, returns messages + meta ↓
     @database_sync_to_async
     def _get_history(self):
-        from .selectors import get_recent_messages
+        from .selectors import get_messages_before
         from .serializers import MessageSerializer
 
-        msgs = get_recent_messages(self.room)
-        return MessageSerializer(msgs, many=True).data
+        msgs = get_messages_before(self.room, limit=20)
+        serialized = MessageSerializer(msgs, many=True).data
+        has_more = len(msgs) == 20
+        oldest_id = msgs[0].id if msgs else None
+        return list(serialized), {"has_more": has_more, "oldest_id": oldest_id}
 
+    # CHANGED: sends meta alongside messages ↓
     async def _send_history(self):
-        history = await self._get_history()
+        messages, meta = await self._get_history()
         await self.send(
             text_data=json.dumps(
                 {
                     "type": "history",
-                    "messages": list(history),
+                    "messages": messages,
+                    "meta": meta,  # has_more + oldest_id
                 }
             )
         )
 
     async def _send_presence(self):
-        online = cache.smembers(_presence_key(self.room_slug)) or set()
+        online = _decode_online(
+            self.redis.smembers(_presence_key(self.room_slug)) or set()
+        )  # CHANGED
         await self.send(
             text_data=json.dumps(
                 {
                     "type": "presence",
-                    "online": list(online),
+                    "online": online,  # CHANGED
                 }
             )
         )
@@ -218,9 +225,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def _check_rate_limit(self) -> bool:
         key = f"ws_rate:{self.user.id}:{self.room_slug}"
         try:
-            count = cache.incr(key)
+            count = self.redis.incr(key)
             if count == 1:
-                cache.expire(key, _WS_RATE_WINDOW)
+                self.redis.expire(key, _WS_RATE_WINDOW)
         except Exception:
-            return True  # Redis down — allow through
+            return True
         return count <= _WS_RATE_LIMIT

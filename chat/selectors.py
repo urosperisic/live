@@ -32,14 +32,28 @@ def get_user_rooms(user):
     return _annotate_rooms(Room.objects.filter(members=user))
 
 
-def get_recent_messages(room: Room, limit: int = None):
-    limit = limit or settings.MESSAGE_HISTORY_LIMIT
-    return list(
-        reversed(
-            list(
-                Message.objects.filter(room=room)
-                .select_related("sender")
-                .order_by("-created_at")[:limit]
-            )
-        )
-    )
+# def get_recent_messages(room: Room, limit: int = None):
+#     limit = limit or settings.MESSAGE_HISTORY_LIMIT
+#     return list(
+#         reversed(
+#             list(
+#                 Message.objects.filter(room=room)
+#                 .select_related("sender")
+#                 .order_by("-created_at")[:limit]
+#             )
+#         )
+#     )
+
+
+def get_messages_before(room: Room, before_id: int = None, limit: int = 20):
+    """
+    Returns `limit` messages older than `before_id`.
+    If before_id is not provided — returns the most recent `limit` messages.
+    """
+    qs = Message.objects.filter(room=room).select_related("sender")
+    if before_id:
+        qs = qs.filter(id__lt=before_id)
+    # Fetch last N (newest first), then reverse for chronological display
+    messages = list(qs.order_by("-id")[:limit])
+    messages.reverse()
+    return messages

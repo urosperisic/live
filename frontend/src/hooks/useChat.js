@@ -8,7 +8,7 @@ export default function useChat(slug) {
   const wsRef          = useRef(null)
   const reconnectCount = useRef(0)
   const reconnectTimer = useRef(null)
-  const activeToken    = useRef(null)   // unique token per connection lifecycle
+  const activeToken    = useRef(null)
 
   const [status, setStatus] = useState('disconnected')
   const { setHistory, addMessage, setOnline } = useChatStore()
@@ -22,11 +22,9 @@ export default function useChat(slug) {
   useEffect(() => {
     if (!slug) return
 
-    // Generate a unique token for this effect run
     const token = Symbol()
     activeToken.current = token
 
-    // Close any existing connection first
     clearTimeout(reconnectTimer.current)
     if (wsRef.current) {
       wsRef.current.onclose = null
@@ -37,7 +35,6 @@ export default function useChat(slug) {
     reconnectCount.current = 0
 
     function connect() {
-      // If this effect was superseded, stop
       if (activeToken.current !== token) return
 
       const proto  = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -58,7 +55,7 @@ export default function useChat(slug) {
 
         switch (data.type) {
           case 'history':
-            setHistory(slug, data.messages)
+            setHistory(slug, data.messages, data.meta ?? {}) // CHANGED: pass meta
             break
           case 'message':
             addMessage(slug, {
@@ -96,7 +93,6 @@ export default function useChat(slug) {
     connect()
 
     return () => {
-      // Invalidate this token — any in-flight messages will be ignored
       activeToken.current = null
       clearTimeout(reconnectTimer.current)
       if (wsRef.current) {

@@ -97,16 +97,46 @@ function InviteModal({ slug, onClose }) {
 }
 
 export default function ChatWindow({ onMenuClick, status, sendMessage }) {
-  const { rooms, activeSlug, messages } = useChatStore()
-  const { user }                        = useAuthStore()
-  const room      = rooms.find(r => r.slug === activeSlug)
-  const msgs      = messages[activeSlug] || []
-  const bottomRef = useRef(null)
+  const { rooms, activeSlug, messages, hasMore, loadingMore, loadMoreMessages } = useChatStore()
+  const { user }    = useAuthStore()
+  const room        = rooms.find(r => r.slug === activeSlug)
+  const msgs        = messages[activeSlug] || []
+  const bottomRef   = useRef(null)
+  const scrollRef   = useRef(null)   // CHANGED: ref on messages container
   const [showInvite, setShowInvite] = useState(false)
 
+  // Only scroll to bottom on new messages, not on prepends
+  const prevMsgCount = useRef(0)
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const count = msgs.length
+    if (count > prevMsgCount.current) {
+      const wasInitialLoad = prevMsgCount.current === 0
+      const lastMsg        = msgs[count - 1]
+      const prevLastMsg    = msgs[prevMsgCount.current - 1]
+      if (wasInitialLoad || lastMsg?.id !== prevLastMsg?.id) {
+        bottomRef.current?.scrollIntoView({ behavior: wasInitialLoad ? 'auto' : 'smooth' })
+      }
+    }
+    prevMsgCount.current = count
   }, [msgs])
+
+  useEffect(() => {
+  const el = scrollRef.current
+  if (!el) return
+  if (el.scrollHeight <= el.clientHeight && hasMore[activeSlug] && !loadingMore[activeSlug]) {
+    loadMoreMessages(activeSlug)
+  }
+}, [msgs])
+
+  // CHANGED: auto-trigger load more when scrolled to top ↓
+  const handleScroll = () => {
+    const el = scrollRef.current
+    if (!el) return
+    if (el.scrollTop === 0 && hasMore[activeSlug] && !loadingMore[activeSlug]) {
+      loadMoreMessages(activeSlug)
+    }
+  }
 
   if (!room) {
     return (
@@ -155,7 +185,8 @@ export default function ChatWindow({ onMenuClick, status, sendMessage }) {
         <ConnectionStatus status={status} />
       </div>
 
-      <div className="chat__messages">
+      {/* CHANGED: added ref + onScroll, removed Load More button ↓ */}
+      <div className="chat__messages" ref={scrollRef} onScroll={handleScroll}>
         {grouped.length === 0 && (
           <div className="chat__empty">
             <p>No messages yet. Say hello!</p>
